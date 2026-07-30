@@ -1,7 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { Dachshund } from "@/components/Dachshund";
-import { countOf, type FeedGoal } from "@/hooks/useGoals";
-import { ddayLabel, isOverdue } from "@/lib/goals";
+import type { FeedGoal } from "@/hooks/useGoals";
+import { dateOnly, ddayLabel, isOverdue } from "@/lib/goals";
 
 export function FeedCard({
   goal,
@@ -17,7 +17,6 @@ export function FeedCard({
   onOpenComments: () => void;
 }) {
   const overdue = isOverdue(goal);
-  const nickname = goal.profiles?.nickname ?? "이름 없는 친구";
 
   return (
     <article className="card-soft overflow-hidden">
@@ -25,7 +24,7 @@ export function FeedCard({
         <div className="flex items-center gap-2 bg-secondary/40 px-4 py-2">
           <Dachshund mood="proud" size={44} />
           <p className="text-xs font-black text-secondary-foreground">
-            🎀 {nickname} 님이 목표를 끝냈어요!
+            🎀 {goal.nickname} 님이 목표를 끝냈어요!
           </p>
         </div>
       )}
@@ -33,7 +32,7 @@ export function FeedCard({
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-black text-primary">
-            {nickname}
+            {goal.nickname}
             {isMine && (
               <span className="ml-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px]">나</span>
             )}
@@ -64,7 +63,7 @@ export function FeedCard({
         )}
 
         <p className="mt-2 text-xs font-bold text-muted-foreground">
-          {"⭐".repeat(goal.importance)} · 기한 {goal.deadline}
+          {"⭐".repeat(goal.importance)} · 기한 {dateOnly(goal.deadline)}
         </p>
 
         <div className="mt-4 flex gap-2">
@@ -77,7 +76,7 @@ export function FeedCard({
             }`}
           >
             <span className={cheered ? "motion-safe:animate-bounce" : ""}>🐾</span>
-            응원 {countOf(goal.cheers)}
+            응원 {goal.cheerCount}
           </button>
 
           <button
@@ -85,7 +84,7 @@ export function FeedCard({
             className="flex flex-1 items-center justify-center gap-1.5 rounded-[16px] bg-muted py-2.5 text-sm font-bold text-foreground transition-transform active:scale-95"
           >
             <MessageCircle size={16} />
-            댓글 {countOf(goal.comments)}
+            댓글 {goal.commentCount}
           </button>
         </div>
       </div>
