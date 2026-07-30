@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { todayISO, type Goal } from "@/lib/goals";
+import { Lock, Users, X } from "lucide-react";
+import { db } from "@/lib/db";
+import { dateOnly, todayISO, type Goal } from "@/lib/goals";
 
 function defaultDeadline() {
   const d = new Date();
@@ -29,6 +29,7 @@ export function GoalFormModal({
   const [description, setDescription] = useState("");
   const [importance, setImportance] = useState(3);
   const [deadline, setDeadline] = useState(defaultDeadline);
+  const [isPublic, setIsPublic] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -36,7 +37,8 @@ export function GoalFormModal({
     setTitle(goal?.title ?? "");
     setDescription(goal?.description ?? "");
     setImportance(goal?.importance ?? 3);
-    setDeadline(goal?.deadline ?? defaultDeadline());
+    setDeadline(goal ? dateOnly(goal.deadline) : defaultDeadline());
+    setIsPublic(goal?.is_public ?? true);
   }, [open, goal]);
 
   useEffect(() => {
@@ -65,11 +67,12 @@ export function GoalFormModal({
       description: description.trim() || null,
       importance,
       deadline,
+      is_public: isPublic,
     };
 
     const { error } = goal
-      ? await supabase.from("goals").update(payload).eq("id", goal.id)
-      : await supabase.from("goals").insert({ ...payload, user_id: userId });
+      ? await db.from("goals").update(payload).eq("id", goal.id)
+      : await db.from("goals").insert({ ...payload, user_id: userId });
 
     setBusy(false);
 
@@ -94,7 +97,7 @@ export function GoalFormModal({
         role="dialog"
         aria-modal="true"
         aria-label={goal ? "목표 수정" : "목표 만들기"}
-        className="card-soft relative w-full max-w-md rounded-b-none p-6 pb-8 sm:rounded-b-[24px]"
+        className="card-soft relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-b-none p-6 pb-8 sm:rounded-b-[24px]"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-xl text-primary">{goal ? "목표 다듬기" : "새 목표 만들기"}</h2>
@@ -163,6 +166,38 @@ export function GoalFormModal({
           onChange={(e) => setDeadline(e.target.value)}
           className="mt-2 w-full rounded-[18px] border border-border bg-muted px-4 py-3 text-base outline-none focus:border-accent focus:ring-2 focus:ring-ring/40"
         />
+
+        {/* 공개 여부 */}
+        <p className="mt-4 text-sm font-bold text-muted-foreground">공개 범위</p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setIsPublic(true)}
+            aria-pressed={isPublic}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-[16px] py-3 text-sm font-bold transition-transform active:scale-95 ${
+              isPublic ? "bg-accent text-accent-foreground shadow-pop" : "bg-muted text-foreground"
+            }`}
+          >
+            <Users size={16} />
+            모두에게 공개
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsPublic(false)}
+            aria-pressed={!isPublic}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-[16px] py-3 text-sm font-bold transition-transform active:scale-95 ${
+              !isPublic ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            }`}
+          >
+            <Lock size={16} />
+            나만 보기
+          </button>
+        </div>
+        <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+          {isPublic
+            ? "모두의 목표 탭에 올라가고, 친구들이 응원할 수 있어요."
+            : "내 목표 탭에서 나만 볼 수 있어요."}
+        </p>
 
         <button
           onClick={save}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { AppShell } from "@/components/AppShell";
 import { Dachshund } from "@/components/Dachshund";
 import { useMyStats } from "@/hooks/useGoals";
@@ -31,7 +31,7 @@ function MyPage({ profile, userId }: { profile: Profile; userId: string }) {
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("comments")
         .select("id, nickname, content, created_at, goals!inner(title, user_id)")
         .eq("goals.user_id", userId)

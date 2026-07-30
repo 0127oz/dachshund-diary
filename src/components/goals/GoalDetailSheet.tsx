@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
+import { Check, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
+import { db } from "@/lib/db";
+import { dateOnly, ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
 
 export function GoalDetailSheet({
   goal,
@@ -13,7 +13,7 @@ export function GoalDetailSheet({
   goal: Goal | null;
   onClose: () => void;
   onEdit: (goal: Goal) => void;
-  onChanged: (event: "done" | "undone" | "deleted") => void;
+  onChanged: (event: "done" | "undone" | "deleted" | "visibility") => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -33,7 +33,7 @@ export function GoalDetailSheet({
     if (!goal) return;
     setBusy(true);
     const next = !goal.is_done;
-    const { error } = await supabase.from("goals").update({ is_done: next }).eq("id", goal.id);
+    const { error } = await db.from("goals").update({ is_done: next }).eq("id", goal.id);
     setBusy(false);
 
     if (error) {
@@ -45,12 +45,29 @@ export function GoalDetailSheet({
     onClose();
   }
 
+  async function toggleVisibility() {
+    if (!goal) return;
+    setBusy(true);
+    const next = !goal.is_public;
+    const { error } = await db.from("goals").update({ is_public: next }).eq("id", goal.id);
+    setBusy(false);
+
+    if (error) {
+      console.error(error);
+      toast.error("공개 설정을 바꾸지 못했어.");
+      return;
+    }
+    toast.success(next ? "모두의 목표에 공개했어요" : "나만 보기로 바꿨어요");
+    onChanged("visibility");
+    onClose();
+  }
+
   async function remove() {
     if (!goal) return;
     if (!window.confirm(`"${goal.title}" 목표를 지울까요? 되돌릴 수 없어요.`)) return;
 
     setBusy(true);
-    const { error } = await supabase.from("goals").delete().eq("id", goal.id);
+    const { error } = await db.from("goals").delete().eq("id", goal.id);
     setBusy(false);
 
     if (error) {
@@ -74,7 +91,7 @@ export function GoalDetailSheet({
         role="dialog"
         aria-modal="true"
         aria-label="목표 상세"
-        className="card-soft relative w-full max-w-md rounded-b-none p-6 pb-8 sm:rounded-b-[24px]"
+        className="card-soft relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-b-none p-6 pb-8 sm:rounded-b-[24px]"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -92,6 +109,10 @@ export function GoalDetailSheet({
               </span>
               <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
                 {quadrant.label}
+              </span>
+              <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
+                {goal.is_public ? <Users size={11} /> : <Lock size={11} />}
+                {goal.is_public ? "공개" : "나만 보기"}
               </span>
             </div>
             <h2 className="mt-2 break-keep text-xl text-primary">{goal.title}</h2>
@@ -119,7 +140,7 @@ export function GoalDetailSheet({
           </div>
           <div className="rounded-[16px] bg-muted/70 px-4 py-3">
             <dt className="text-[11px] font-bold text-muted-foreground">기한</dt>
-            <dd className="mt-0.5 text-sm font-black">{goal.deadline}</dd>
+            <dd className="mt-0.5 text-sm font-black">{dateOnly(goal.deadline)}</dd>
           </div>
         </dl>
 
@@ -135,6 +156,15 @@ export function GoalDetailSheet({
           >
             {goal.is_done ? <RotateCcw size={18} /> : <Check size={18} />}
             {goal.is_done ? "아직 진행 중으로 되돌리기" : "다 했어요!"}
+          </button>
+
+          <button
+            onClick={toggleVisibility}
+            disabled={busy}
+            className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-muted px-4 py-3 text-sm font-bold text-foreground transition-transform active:scale-95 disabled:opacity-60"
+          >
+            {goal.is_public ? <Lock size={16} /> : <Users size={16} />}
+            {goal.is_public ? "나만 보기로 바꾸기" : "모두의 목표에 공개하기"}
           </button>
 
           <div className="flex gap-2">

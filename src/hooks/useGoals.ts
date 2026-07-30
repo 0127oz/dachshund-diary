@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import type { Goal } from "@/lib/goals";
 
 /* ------------------------------------------------------------------ */
@@ -12,7 +12,7 @@ export function useMyGoals(userId: string) {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("goals")
       .select("*")
       .eq("user_id", userId)
@@ -60,7 +60,7 @@ export function useFeed(userId: string) {
 
   const refetch = useCallback(async () => {
     // is_public = true 인 목표만 피드에 노출됩니다
-    const { data: rows, error } = await supabase
+    const { data: rows, error } = await db
       .from("goals")
       .select("*, comments(count), cheers(count)")
       .eq("is_public", true)
@@ -81,7 +81,7 @@ export function useFeed(userId: string) {
     const authorIds = Array.from(new Set(goals.map((g) => g.user_id)));
     const nameMap = new Map<string, string>();
     if (authorIds.length > 0) {
-      const { data: profiles } = await supabase
+      const { data: profiles } = await db
         .from("profiles")
         .select("id, nickname")
         .in("id", authorIds);
@@ -99,7 +99,7 @@ export function useFeed(userId: string) {
       })),
     );
 
-    const { data: mine } = await supabase.from("cheers").select("goal_id").eq("user_id", userId);
+    const { data: mine } = await db.from("cheers").select("goal_id").eq("user_id", userId);
     setCheered(new Set((mine ?? []).map((r) => r.goal_id as string)));
     setLoading(false);
   }, [userId]);
@@ -128,8 +128,8 @@ export function useFeed(userId: string) {
       );
 
       const { error } = wasCheered
-        ? await supabase.from("cheers").delete().eq("goal_id", goalId).eq("user_id", userId)
-        : await supabase.from("cheers").insert({ goal_id: goalId, user_id: userId });
+        ? await db.from("cheers").delete().eq("goal_id", goalId).eq("user_id", userId)
+        : await db.from("cheers").insert({ goal_id: goalId, user_id: userId });
 
       if (error) {
         console.error(error);
@@ -178,15 +178,15 @@ export function useMyStats(userId: string) {
     void (async () => {
       const head = { count: "exact" as const, head: true };
       const [total, done, cheers, comments] = await Promise.all([
-        supabase.from("goals").select("id", head).eq("user_id", userId),
-        supabase.from("goals").select("id", head).eq("user_id", userId).eq("is_done", true),
+        db.from("goals").select("id", head).eq("user_id", userId),
+        db.from("goals").select("id", head).eq("user_id", userId).eq("is_done", true),
         // 내 목표에 달린 응원 중 내가 누른 것은 제외
-        supabase
+        db
           .from("cheers")
           .select("id, goals!inner(user_id)", head)
           .eq("goals.user_id", userId)
           .neq("user_id", userId),
-        supabase
+        db
           .from("comments")
           .select("id, goals!inner(user_id)", head)
           .eq("goals.user_id", userId)

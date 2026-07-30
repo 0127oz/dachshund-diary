@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Send, Trash2, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Dachshund } from "@/components/Dachshund";
 import type { FeedGoal } from "@/hooks/useGoals";
 
@@ -49,7 +49,7 @@ export function CommentSheet({
   const load = useCallback(async () => {
     if (!goalId) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("comments")
       .select("*")
       .eq("goal_id", goalId)
@@ -84,7 +84,7 @@ export function CommentSheet({
     if (!body || !goal) return;
 
     setBusy(true);
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("comments")
       .insert({ goal_id: goal.id, user_id: userId, nickname, content: body })
       .select()
@@ -102,7 +102,7 @@ export function CommentSheet({
   }
 
   async function remove(comment: Comment) {
-    const { error } = await supabase.from("comments").delete().eq("id", comment.id);
+    const { error } = await db.from("comments").delete().eq("id", comment.id);
     if (error) {
       console.error(error);
       toast.error("댓글을 지우지 못했어.");
@@ -129,7 +129,7 @@ export function CommentSheet({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-black text-muted-foreground">
-              {goal.profiles?.nickname ?? "이름 없는 친구"} 님의 목표
+              {goal.nickname} 님의 목표
             </p>
             <h2 className="mt-0.5 break-keep text-lg text-primary">{goal.title}</h2>
           </div>
