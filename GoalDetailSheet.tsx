@@ -1,0 +1,164 @@
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
+
+export function GoalDetailSheet({
+  goal,
+  onClose,
+  onEdit,
+  onChanged,
+}: {
+  goal: Goal | null;
+  onClose: () => void;
+  onEdit: (goal: Goal) => void;
+  onChanged: (event: "done" | "undone" | "deleted") => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!goal) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goal, onClose]);
+
+  if (!goal) return null;
+
+  const overdue = isOverdue(goal);
+  const quadrant = quadrantOf(goal);
+
+  async function toggleDone() {
+    if (!goal) return;
+    setBusy(true);
+    const next = !goal.is_done;
+    const { error } = await supabase.from("goals").update({ is_done: next }).eq("id", goal.id);
+    setBusy(false);
+
+    if (error) {
+      console.error(error);
+      toast.error("상태를 바꾸지 못했어.");
+      return;
+    }
+    onChanged(next ? "done" : "undone");
+    onClose();
+  }
+
+  async function remove() {
+    if (!goal) return;
+    if (!window.confirm(`"${goal.title}" 목표를 지울까요? 되돌릴 수 없어요.`)) return;
+
+    setBusy(true);
+    const { error } = await supabase.from("goals").delete().eq("id", goal.id);
+    setBusy(false);
+
+    if (error) {
+      console.error(error);
+      toast.error("삭제하지 못했어.");
+      return;
+    }
+    onChanged("deleted");
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center">
+      <div
+        className="absolute inset-0 bg-foreground/35 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-hidden
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="목표 상세"
+        className="card-soft relative w-full max-w-md rounded-b-none p-6 pb-8 sm:rounded-b-[24px]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
+                  goal.is_done
+                    ? "bg-secondary text-secondary-foreground"
+                    : overdue
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-primary/10 text-primary"
+                }`}
+              >
+                {goal.is_done ? "완료함" : ddayLabel(goal.deadline)}
+              </span>
+              <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
+                {quadrant.label}
+              </span>
+            </div>
+            <h2 className="mt-2 break-keep text-xl text-primary">{goal.title}</h2>
+          </div>
+
+          <button
+            onClick={onClose}
+            aria-label="닫기"
+            className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {goal.description && (
+          <p className="mt-3 rounded-[16px] bg-muted/70 px-4 py-3 text-sm font-semibold text-muted-foreground">
+            {goal.description}
+          </p>
+        )}
+
+        <dl className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-[16px] bg-muted/70 px-4 py-3">
+            <dt className="text-[11px] font-bold text-muted-foreground">중요도</dt>
+            <dd className="mt-0.5 text-sm font-black">{"⭐".repeat(goal.importance)}</dd>
+          </div>
+          <div className="rounded-[16px] bg-muted/70 px-4 py-3">
+            <dt className="text-[11px] font-bold text-muted-foreground">기한</dt>
+            <dd className="mt-0.5 text-sm font-black">{goal.deadline}</dd>
+          </div>
+        </dl>
+
+        <div className="mt-5 space-y-2">
+          <button
+            onClick={toggleDone}
+            disabled={busy}
+            className={`flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3.5 text-base font-bold transition-transform active:scale-95 disabled:opacity-60 ${
+              goal.is_done
+                ? "bg-muted text-muted-foreground"
+                : "bg-accent text-accent-foreground shadow-pop"
+            }`}
+          >
+            {goal.is_done ? <RotateCcw size={18} /> : <Check size={18} />}
+            {goal.is_done ? "아직 진행 중으로 되돌리기" : "다 했어요!"}
+          </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                onEdit(goal);
+                onClose();
+              }}
+              className="flex flex-1 items-center justify-center gap-2 rounded-[18px] bg-muted px-4 py-3 text-sm font-bold text-foreground transition-transform active:scale-95"
+            >
+              <Pencil size={16} />
+              수정
+            </button>
+            <button
+              onClick={remove}
+              disabled={busy}
+              className="flex flex-1 items-center justify-center gap-2 rounded-[18px] bg-destructive/10 px-4 py-3 text-sm font-bold text-destructive transition-transform active:scale-95 disabled:opacity-60"
+            >
+              <Trash2 size={16} />
+              삭제
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

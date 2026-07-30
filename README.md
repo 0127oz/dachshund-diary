@@ -1,64 +1,62 @@
-# Dachshund Diary
+# 댁이의 목표수첩 — 2·3단계 소스
 
-목표 관리 웹앱 "응지의 목표수첩"을 만들어줘. 귀여운 닥스훈트가 마스코트인 앱이야.
+1단계(디자인 시스템 · 마스코트 · 온보딩)에 이어 붙이는 파일들입니다.
+기존 파일은 하나도 수정하지 않아도 되고, 아래 파일들만 추가하면 됩니다.
 
-[디자인 톤]
+## 파일 목록
 
-- 따뜻하고 말랑한 느낌. 배경 크림색(#FFF8F0), 메인 브라운(#8B5E3C),
+### 2단계 — 목표 등록 + 2×2 그리드
+| 파일 | 역할 |
+|---|---|
+| `src/lib/goals.ts` | 타입, D-day 계산, **그리드 좌표 로직** |
+| `src/hooks/useGoals.ts` | 데이터 조회/변경 훅 (2·3단계 공용) |
+| `src/components/goals/GoalFormModal.tsx` | 목표 만들기 · 수정 모달 |
+| `src/components/goals/PriorityGrid.tsx` | 기한 × 중요도 매트릭스 |
+| `src/components/goals/GoalListCard.tsx` | D-day 순 리스트 카드 |
+| `src/components/goals/GoalDetailSheet.tsx` | 상세 · 완료 · 삭제 |
+| `src/routes/index.tsx` | 내 목표 화면 |
+| `supabase/step2_goals.sql` | goals 테이블 + RLS |
 
-  포인트 코랄(#FF8A65), 서브 민트(#A8D5BA)
+### 3단계 — 모두의 목표 + 응원
+| 파일 | 역할 |
+|---|---|
+| `src/components/social/FeedCard.tsx` | 피드 카드 + 발바닥 응원 버튼 |
+| `src/components/social/CommentSheet.tsx` | 댓글 시트 + 빠른 응원 칩 |
+| `src/routes/everyone.tsx` | 모두의 목표 |
+| `src/routes/me.tsx` | 마이페이지 (완료율 · 받은 응원) |
+| `supabase/step3_social.sql` | comments · cheers 테이블 + RLS |
 
-- 모든 카드는 radius 20px 이상, 부드러운 그림자
+## 적용 순서
 
-- 폰트는 Pretendard, 제목은 굵고 둥글게
+1. `supabase/step2_goals.sql` 실행 → 2단계 tsx 파일 추가 → 동작 확인
+2. `supabase/step3_social.sql` 실행 → 3단계 tsx 파일 추가
 
-- 모바일 우선 반응형
+SQL은 러버블 채팅에 그대로 붙여넣고 "이 SQL을 마이그레이션으로 실행해줘"라고 하면 됩니다.
 
-[마스코트 - 중요]
+## 전제 조건
 
-Dachshund.tsx 라는 재사용 컴포넌트를 SVG로 직접 만들어줘.
+- `profiles` 테이블이 이미 있고, `id` 가 `auth.users.id` 와 같아야 합니다
+  (goals·comments·cheers 가 `profiles.id` 를 참조합니다).
+- `profiles` 의 SELECT 정책이 전체 공개여야 피드에 닉네임이 뜹니다.
+  `step2_goals.sql` 마지막에 해당 정책이 들어 있습니다.
+- 익명 로그인(Anonymous Sign-in)이 켜져 있어야 합니다.
 
-- 몸통이 길고 다리가 짧은 갈색 닥스훈트, 축 처진 귀, 동그란 코
+## 그리드 좌표가 이상할 때
 
-- mood prop으로 표정 4가지: 'happy'(웃는 눈), 'cheer'(앞발 들고 응원),
+좌표 계산은 전부 `src/lib/goals.ts` 안에 있습니다.
 
-  'sleepy'(눈 감음), 'proud'(가슴 펴고 뿌듯)
+- `HORIZON_DAYS` — 가로축이 담는 기간(기본 60일). 90일로 늘리면 점이 더 왼쪽으로 몰립니다.
+- `xRatio()` — 기한 → 가로 위치. 오늘이거나 지난 목표는 0(맨 왼쪽) 고정.
+- `yRatio()` — 중요도 5 → 맨 위, 1 → 맨 아래.
+- `layoutGoals()` — 겹친 점을 황금각 나선으로 흩뿌립니다.
+  `MIN_GAP` 을 키우면 더 멀리, `PAD` 를 키우면 테두리에서 더 안쪽으로 배치됩니다.
 
-- size prop으로 크기 조절 가능
+## 알아둘 점
 
-- 이 컴포넌트를 앱 곳곳에서 재사용할 거야
-
-[온보딩]
-
-- 처음 접속하면 닉네임 입력 화면. 가운데에 큰 마스코트(mood='happy')
-
-- "안녕! 나는 댁이야. 너를 뭐라고 부를까?" 문구
-
-- 닉네임 입력 후 시작하기 → Supabase 익명 로그인 처리하고
-
-  profiles 테이블(id, nickname, created_at)에 저장
-
-- 이미 로그인된 사용자는 이 화면을 건너뛰고 바로 홈으로
-
-하단에 탭 네비게이션 3개: 내 목표 / 모두의 목표 / 마이페이지
-
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/ebbdbd65-23ce-43b1-96e8-839b93eb5cf3).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+- 데이터 조회는 `useState` + `useEffect` 로만 짰습니다. 프로젝트에 react-query가
+  있다면 `useGoals.ts` 만 바꿔 끼우면 됩니다.
+- 피드는 최신순 60개까지만 불러옵니다. 무한 스크롤이 필요하면 `useFeed` 의
+  `.limit(60)` 부분을 페이지네이션으로 바꾸세요.
+- 댓글의 `nickname` 은 작성 시점 값을 그대로 저장합니다(비정규화).
+  나중에 닉네임을 바꿔도 예전 댓글은 옛 이름으로 남습니다.
+- 마이페이지의 "받은 응원"은 내가 내 목표에 누른 응원은 빼고 셉니다.
