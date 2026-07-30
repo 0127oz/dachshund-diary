@@ -116,7 +116,7 @@ function MyGoals({ userId }: { userId: string }) {
             maxLength={60}
             placeholder="새로운 목표를 적어봐!"
             aria-label="새 목표"
-            className="flex-1 rounded-[18px] border border-border bg-muted px-4 py-3 outline-none focus:border-accent"
+            className="min-w-0 flex-1 rounded-[18px] border border-border bg-muted px-4 py-3 outline-none focus:border-accent"
           />
           <button
             onClick={add}
