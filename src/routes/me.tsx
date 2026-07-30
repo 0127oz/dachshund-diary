@@ -1,83 +1,103 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { Dachshund } from "@/components/Dachshund";
+import { useMyStats } from "@/hooks/useGoals";
+import type { Profile } from "@/hooks/useProfile";
 
-export const Route = createFileRoute("/me")({
-  head: () => ({
-    meta: [
-      { title: "마이페이지 — 응지의 목표수첩" },
-      { name: "description", content: "닉네임을 바꾸고 나의 목표 기록을 한눈에 확인해요." },
-      { property: "og:title", content: "마이페이지 — 응지의 목표수첩" },
-      { property: "og:description", content: "닉네임을 바꾸고 나의 목표 기록을 한눈에 확인해요." },
-    ],
-  }),
-  component: MyPage,
-});
+export const Route = createFileRoute("/me")({ component: MeRoute });
 
-function MyPage() {
+function MeRoute() {
   return (
     <AppShell title="마이페이지">
-      {({ profile, userId }) => <Me userId={userId} nickname={profile.nickname} />}
+      {({ profile, userId }) => <MyPage profile={profile} userId={userId} />}
     </AppShell>
   );
 }
 
-function Me({ userId, nickname }: { userId: string; nickname: string }) {
-  const [name, setName] = useState(nickname);
-  const [stats, setStats] = useState({ total: 0, done: 0 });
+type ReceivedComment = {
+  id: string;
+  nickname: string;
+  content: string;
+  created_at: string;
+  goals: { title: string } | null;
+};
+
+function MyPage({ profile, userId }: { profile: Profile; userId: string }) {
+  const { stats, loading } = useMyStats(userId);
+  const [received, setReceived] = useState<ReceivedComment[]>([]);
 
   useEffect(() => {
-    supabase
-      .from("goals")
-      .select("is_done")
-      .eq("user_id", userId)
-      .then(({ data }) => {
-        const rows = data ?? [];
-        setStats({ total: rows.length, done: rows.filter((r) => r.is_done).length });
-      });
+    let alive = true;
+    void (async () => {
+      const { data } = await supabase
+        .from("comments")
+        .select("id, nickname, content, created_at, goals!inner(title, user_id)")
+        .eq("goals.user_id", userId)
+        .neq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (alive && data) setReceived(data as unknown as ReceivedComment[]);
+    })();
+    return () => {
+      alive = false;
+    };
   }, [userId]);
 
-  async function save() {
-    const n = name.trim();
-    if (n.length < 1 || n.length > 12) {
-      toast.error("닉네임은 1~12자로 적어줘!");
-      return;
-    }
-    const { error } = await supabase.from("profiles").update({ nickname: n }).eq("id", userId);
-    if (error) toast.error("저장하지 못했어요.");
-    else toast.success("닉네임을 바꿨어!");
-  }
+  const rate = stats.total === 0 ? 0 : Math.round((stats.done / stats.total) * 100);
+  const mood = stats.done > 0 ? "proud" : "happy";
 
   return (
-    <div className="space-y-5">
-      <section className="card-soft flex flex-col items-center gap-2 p-6 text-center">
-        <Dachshund mood="proud" size={170} />
-        <p className="text-xl font-extrabold text-primary">{nickname}</p>
-        <p className="text-sm text-muted-foreground">
-          목표 {stats.total}개 중 {stats.done}개 완료
+    <div className="space-y-4">
+      <section className="card-soft flex flex-col items-center px-6 py-7 text-center">
+        <Dachshund mood={mood} size={160} />
+        <p className="mt-3 text-xl text-primary">{profile.nickname}</p>
+        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+          {loading ? "계산하는 중..." : `목표 ${stats.total}개 중 ${stats.done}개 완료`}
         </p>
+
+        <div className="mt-4 w-full">
+          <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-500"
+              style={{ width: `${rate}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-xs font-black text-muted-foreground">완료율 {rate}%</p>
+        </div>
       </section>
 
-      <section className="card-soft space-y-3 p-5">
-        <label htmlFor="nick" className="text-sm font-bold text-muted-foreground">
-          닉네임 바꾸기
-        </label>
-        <input
-          id="nick"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={12}
-          className="w-full rounded-[18px] border border-border bg-muted px-4 py-3 outline-none focus:border-accent"
-        />
-        <button
-          onClick={save}
-          className="w-full rounded-[18px] bg-accent px-4 py-3 font-bold text-accent-foreground shadow-pop active:scale-95"
-        >
-          저장하기
-        </button>
+      <section className="grid grid-cols-2 gap-3">
+        <div className="card-soft px-4 py-5 text-center">
+          <p className="text-3xl font-black text-accent">{stats.cheersReceived}</p>
+          <p className="mt-1 text-xs font-bold text-muted-foreground">받은 응원 🐾</p>
+        </div>
+        <div className="card-soft px-4 py-5 text-center">
+          <p className="text-3xl font-black text-primary">{stats.commentsReceived}</p>
+          <p className="mt-1 text-xs font-bold text-muted-foreground">받은 댓글 💬</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-base text-primary">나에게 온 응원</h2>
+        {received.length === 0 ? (
+          <p className="card-soft mt-3 px-4 py-6 text-center text-sm font-semibold text-muted-foreground">
+            아직 응원이 없어요. 모두의 목표에서 먼저 응원해보는 건 어때요?
+          </p>
+        ) : (
+          <div className="mt-3 space-y-2.5">
+            {received.map((c) => (
+              <div key={c.id} className="card-soft px-4 py-3">
+                <p className="truncate text-[11px] font-bold text-muted-foreground">
+                  {c.goals?.title}
+                </p>
+                <p className="mt-1 break-keep text-sm font-semibold">{c.content}</p>
+                <p className="mt-1 text-[11px] font-black text-accent">— {c.nickname}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

@@ -1,168 +1,143 @@
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Dachshund } from "@/components/Dachshund";
+import { GoalDetailSheet } from "@/components/goals/GoalDetailSheet";
+import { GoalFormModal } from "@/components/goals/GoalFormModal";
+import { GoalListCard } from "@/components/goals/GoalListCard";
+import { PriorityGrid } from "@/components/goals/PriorityGrid";
+import { useMyGoals } from "@/hooks/useGoals";
+import { daysLeft, type Goal } from "@/lib/goals";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "내 목표 — 응지의 목표수첩" },
-      {
-        name: "description",
-        content: "닥스훈트 댁이와 함께 오늘의 목표를 적고 하나씩 완료해보세요.",
-      },
-      { property: "og:title", content: "내 목표 — 응지의 목표수첩" },
-      {
-        property: "og:description",
-        content: "닥스훈트 댁이와 함께 오늘의 목표를 적고 하나씩 완료해보세요.",
-      },
-    ],
-  }),
-  component: MyGoalsPage,
-});
+export const Route = createFileRoute("/")({ component: MyGoalsRoute });
 
-interface Goal {
-  id: string;
-  title: string;
-  emoji: string;
-  is_done: boolean;
-  is_public: boolean;
-}
-
-const EMOJIS = ["🎯", "📚", "🏃", "🥗", "💰", "🎨"];
-
-function MyGoalsPage() {
+function MyGoalsRoute() {
   return <AppShell title="내 목표">{({ userId }) => <MyGoals userId={userId} />}</AppShell>;
 }
 
-function MyGoals({ userId }: { userId: string }) {
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [title, setTitle] = useState("");
-  const [emoji, setEmoji] = useState(EMOJIS[0]);
-
+/** 목표를 세우거나 완료했을 때 잠깐 나타나는 댁이 */
+function MascotBurst({ message, onDone }: { message: string; onDone: () => void }) {
   useEffect(() => {
-    supabase
-      .from("goals")
-      .select("id, title, emoji, is_done, is_public")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setGoals((data as Goal[]) ?? []));
-  }, [userId]);
-
-  async function add() {
-    const t = title.trim();
-    if (!t) return;
-    const { data, error } = await supabase
-      .from("goals")
-      .insert({ user_id: userId, title: t, emoji })
-      .select("id, title, emoji, is_done, is_public")
-      .single();
-    if (error) {
-      toast.error("목표를 저장하지 못했어요.");
-      return;
-    }
-    setGoals((g) => [data as Goal, ...g]);
-    setTitle("");
-  }
-
-  async function toggle(goal: Goal) {
-    setGoals((g) => g.map((x) => (x.id === goal.id ? { ...x, is_done: !x.is_done } : x)));
-    await supabase.from("goals").update({ is_done: !goal.is_done }).eq("id", goal.id);
-    if (!goal.is_done) toast.success("잘했어! 댁이가 응원해 🐾");
-  }
-
-  async function remove(id: string) {
-    setGoals((g) => g.filter((x) => x.id !== id));
-    await supabase.from("goals").delete().eq("id", id);
-  }
-
-  const done = goals.filter((g) => g.is_done).length;
+    const t = window.setTimeout(onDone, 1600);
+    return () => window.clearTimeout(t);
+  }, [onDone]);
 
   return (
-    <div className="space-y-5">
-      <section className="card-soft flex items-center gap-3 p-5">
-        <Dachshund mood={done > 0 ? "proud" : "cheer"} size={110} />
-        <div>
-          <p className="text-sm font-semibold text-muted-foreground">오늘의 진행</p>
-          <p className="text-xl font-extrabold text-primary">
-            {done} / {goals.length} 완료
-          </p>
-        </div>
-      </section>
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+      <div className="card-soft flex flex-col items-center gap-1 px-8 py-6 motion-safe:animate-bounce">
+        <Dachshund mood="cheer" size={150} />
+        <p className="text-base font-black text-primary">{message}</p>
+      </div>
+    </div>
+  );
+}
 
-      <section className="card-soft space-y-3 p-5">
-        <div className="flex gap-2">
-          {EMOJIS.map((e) => (
-            <button
-              key={e}
-              onClick={() => setEmoji(e)}
-              aria-label={`이모지 ${e}`}
-              className={`h-10 w-10 rounded-[14px] text-lg transition ${
-                emoji === e ? "bg-accent/20 ring-2 ring-accent" : "bg-muted"
-              }`}
-            >
-              {e}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            maxLength={60}
-            placeholder="새로운 목표를 적어봐!"
-            aria-label="새 목표"
-            className="min-w-0 flex-1 rounded-[18px] border border-border bg-muted px-4 py-3 outline-none focus:border-accent"
-          />
+function MyGoals({ userId }: { userId: string }) {
+  const { goals, loading, refetch } = useMyGoals(userId);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Goal | null>(null);
+  const [selected, setSelected] = useState<Goal | null>(null);
+  const [burst, setBurst] = useState<string | null>(null);
+
+  // 진행 중인 목표를 D-day 순으로, 완료한 목표는 아래로
+  const sorted = useMemo(
+    () =>
+      [...goals].sort(
+        (a, b) =>
+          Number(a.is_done) - Number(b.is_done) ||
+          daysLeft(a.deadline) - daysLeft(b.deadline) ||
+          b.importance - a.importance,
+      ),
+    [goals],
+  );
+
+  const doneCount = goals.filter((g) => g.is_done).length;
+
+  function openNew() {
+    setEditing(null);
+    setFormOpen(true);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Dachshund mood="sleepy" size={120} className="animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {goals.length === 0 ? (
+        <div className="card-soft flex flex-col items-center px-6 py-12 text-center">
+          <Dachshund mood="sleepy" size={180} />
+          <p className="mt-4 text-lg font-black text-primary">아직 목표가 없네.</p>
+          <p className="mt-1 text-sm font-semibold text-muted-foreground">하나 만들어볼까?</p>
           <button
-            onClick={add}
-            aria-label="목표 추가"
-            className="rounded-[18px] bg-accent px-4 text-accent-foreground shadow-pop active:scale-95"
+            onClick={openNew}
+            className="mt-5 rounded-[18px] bg-accent px-6 py-3 text-base font-bold text-accent-foreground shadow-pop transition-transform active:scale-95"
           >
-            <Plus />
+            첫 목표 세우기
           </button>
         </div>
-      </section>
-
-      {goals.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          아직 목표가 없어. 첫 목표를 적어볼까?
-        </p>
       ) : (
-        <ul className="space-y-3">
-          {goals.map((g) => (
-            <li key={g.id} className="card-soft flex items-center gap-3 p-4">
-              <button
-                onClick={() => toggle(g)}
-                aria-label="완료 토글"
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] text-lg ${
-                  g.is_done ? "bg-mint text-mint-foreground" : "bg-muted"
-                }`}
-              >
-                {g.emoji}
-              </button>
-              <span
-                className={`flex-1 font-semibold ${
-                  g.is_done ? "text-muted-foreground line-through" : "text-foreground"
-                }`}
-              >
-                {g.title}
-              </span>
-              <button
-                onClick={() => remove(g.id)}
-                aria-label="목표 삭제"
-                className="text-muted-foreground transition hover:text-destructive"
-              >
-                <Trash2 size={18} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-5">
+          <p className="text-sm font-bold text-muted-foreground">
+            목표 {goals.length}개 중 {doneCount}개 완료했어요
+          </p>
+
+          <PriorityGrid goals={goals} onSelect={setSelected} />
+
+          <div>
+            <h2 className="text-base text-primary">기한이 가까운 순서</h2>
+            <div className="mt-3 space-y-2.5">
+              {sorted.map((goal) => (
+                <GoalListCard key={goal.id} goal={goal} onSelect={setSelected} />
+              ))}
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+
+      {/* 목표 추가 버튼 */}
+      {goals.length > 0 && (
+        <button
+          onClick={openNew}
+          aria-label="목표 만들기"
+          className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-bold text-accent-foreground shadow-pop transition-transform active:scale-95"
+        >
+          <Plus size={20} />
+          목표 만들기
+        </button>
+      )}
+
+      <GoalFormModal
+        open={formOpen}
+        userId={userId}
+        goal={editing}
+        onClose={() => setFormOpen(false)}
+        onSaved={(mode) => {
+          void refetch();
+          setBurst(mode === "created" ? "좋아! 같이 해보자 🐾" : "수정했어!");
+        }}
+      />
+
+      <GoalDetailSheet
+        goal={selected}
+        onClose={() => setSelected(null)}
+        onEdit={(goal) => {
+          setEditing(goal);
+          setFormOpen(true);
+        }}
+        onChanged={(event) => {
+          void refetch();
+          if (event === "done") setBurst("해냈다! 정말 멋져 🎉");
+        }}
+      />
+
+      {burst && <MascotBurst message={burst} onDone={() => setBurst(null)} />}
+    </>
   );
 }
