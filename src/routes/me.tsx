@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/AppShell";
 import { Dachshund } from "@/components/Dachshund";
+import { AccountCard } from "@/components/AccountCard";
 import { useMyStats } from "@/hooks/useGoals";
 import type { Profile } from "@/hooks/useProfile";
 
@@ -67,6 +68,9 @@ function MyPage({ profile, userId }: { profile: Profile; userId: string }) {
           <p className="mt-1.5 text-xs font-black text-muted-foreground">완료율 {rate}%</p>
         </div>
       </section>
+
+      {/* 익명 계정이면 이메일 연결 폼, 연결된 계정이면 이메일 + 로그아웃 */}
+      <AccountCard />
 
       <section className="grid grid-cols-2 gap-3">
         <div className="card-soft px-4 py-5 text-center">

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { Onboarding } from "./Onboarding";
 import { TabBar } from "./TabBar";
 import { Dachshund } from "./Dachshund";
@@ -22,7 +23,18 @@ export function AppShell({
   }
 
   if (!profile || !userId) {
-    return <Onboarding onDone={setProfile} />;
+    return (
+      <div className="relative min-h-screen">
+        <Onboarding onDone={setProfile} />
+        {/* 다른 기기에서 온 사람이 로그인으로 갈 수 있는 통로 */}
+        <p className="fixed inset-x-0 bottom-6 text-center text-xs font-bold text-muted-foreground">
+          이미 계정이 있나요?{" "}
+          <Link to="/login" className="text-primary underline">
+            로그인
+          </Link>
+        </p>
+      </div>
+    );
   }
 
   return (
