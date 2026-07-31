@@ -83,7 +83,7 @@ function MyPage({ profile, userId }: { profile: Profile; userId: string }) {
         <h2 className="text-base text-primary">나에게 온 응원</h2>
         {received.length === 0 ? (
           <p className="card-soft mt-3 px-4 py-6 text-center text-sm font-semibold text-muted-foreground">
-            아직 응원이 없어요. 모두의 목표에서 먼저 응원해보는 건 어때요?
+            아직 응원이 없어요. 응지의 목표에서 먼저 응원해보는 건 어때요?
           </p>
         ) : (
           <div className="mt-3 space-y-2.5">

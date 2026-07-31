@@ -57,7 +57,7 @@ export function GoalDetailSheet({
       toast.error("공개 설정을 바꾸지 못했어.");
       return;
     }
-    toast.success(next ? "모두의 목표에 공개했어요" : "나만 보기로 바꿨어요");
+    toast.success(next ? "응지의 목표에 공개했어요" : "나만 보기로 바꿨어요");
     onChanged("visibility");
     onClose();
   }
@@ -164,7 +164,7 @@ export function GoalDetailSheet({
             className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-muted px-4 py-3 text-sm font-bold text-foreground transition-transform active:scale-95 disabled:opacity-60"
           >
             {goal.is_public ? <Lock size={16} /> : <Users size={16} />}
-            {goal.is_public ? "나만 보기로 바꾸기" : "모두의 목표에 공개하기"}
+            {goal.is_public ? "나만 보기로 바꾸기" : "응지의 목표에 공개하기"}
           </button>
 
           <div className="flex gap-2">

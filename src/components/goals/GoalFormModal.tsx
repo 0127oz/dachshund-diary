@@ -195,7 +195,7 @@ export function GoalFormModal({
         </div>
         <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
           {isPublic
-            ? "모두의 목표 탭에 올라가고, 친구들이 응원할 수 있어요."
+            ? "응지의 목표 탭에 올라가고, 친구들이 응원할 수 있어요."
             : "내 목표 탭에서 나만 볼 수 있어요."}
         </p>
 
