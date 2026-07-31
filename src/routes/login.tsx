@@ -7,10 +7,13 @@ import { Dachshund } from "@/components/Dachshund";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
+const inputClass =
+  "w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
 function LoginPage() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -39,13 +42,13 @@ function LoginPage() {
   }, []);
 
   const needsWarning = Boolean(pendingNickname) && !acknowledged;
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !busy && !needsWarning;
+  const canSubmit = username.trim().length > 0 && password.length > 0 && !busy && !needsWarning;
 
   async function handleSubmit() {
     if (!canSubmit) return;
     setBusy(true);
     try {
-      await signIn(email.trim(), password);
+      await signIn(username, password);
       toast.success("돌아온 걸 환영해!");
       void navigate({ to: "/" });
     } catch (e) {
@@ -62,7 +65,7 @@ function LoginPage() {
           <Dachshund mood="happy" size={140} />
           <h1 className="mt-3 text-xl text-primary">응지의 목표수첩</h1>
           <p className="mt-1 text-sm font-semibold text-muted-foreground">
-            연결한 이메일로 로그인해주세요
+            아이디와 비밀번호로 로그인해주세요
           </p>
         </div>
 
@@ -75,9 +78,9 @@ function LoginPage() {
             <p className="break-keep text-sm font-semibold text-muted-foreground">
               기록을 지키려면{" "}
               <Link to="/me" className="text-primary underline">
-                마이페이지에서 계정 연결
+                마이페이지에서 계정 만들기
               </Link>
-              을 먼저 해주세요.
+              를 먼저 해주세요.
             </p>
             <button
               onClick={() => setAcknowledged(true)}
@@ -90,23 +93,25 @@ function LoginPage() {
 
         <section className="card-soft space-y-3 px-5 py-5">
           <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            autoComplete="email"
-            placeholder="이메일"
-            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            placeholder="아이디"
+            className={inputClass}
           />
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") void handleSubmit();
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void handleSubmit();
+              }
             }}
             type="password"
             autoComplete="current-password"
             placeholder="비밀번호"
-            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={inputClass}
           />
           <button
             onClick={() => void handleSubmit()}
