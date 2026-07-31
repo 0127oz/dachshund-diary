@@ -3,7 +3,7 @@ import { Target, Users, User } from "lucide-react";
 
 const tabs = [
   { to: "/", label: "내 목표", Icon: Target },
-  { to: "/everyone", label: "모두의 목표", Icon: Users },
+  { to: "/everyone", label: "응지의 목표", Icon: Users },
   { to: "/me", label: "마이페이지", Icon: User },
 ] as const;
 

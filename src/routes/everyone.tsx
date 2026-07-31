@@ -11,7 +11,7 @@ export const Route = createFileRoute("/everyone")({ component: EveryoneRoute });
 
 function EveryoneRoute() {
   return (
-    <AppShell title="모두의 목표">
+    <AppShell title="응지의 목표">
       {({ profile, userId }) => <Feed profile={profile} userId={userId} />}
     </AppShell>
   );
