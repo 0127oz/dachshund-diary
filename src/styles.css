@@ -207,3 +207,16 @@
   background-color: var(--card);
   box-shadow: var(--shadow-soft);
 }
+
+/* Sonner 토스트에도 앱 전역 폰트 적용 */
+[data-sonner-toaster] {
+  font-family: var(--font-sans) !important;
+}
+
+[data-sonner-toast] {
+  font-family: var(--font-sans) !important;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
