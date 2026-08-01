@@ -1,5 +1,6 @@
 import { MessageCircle } from "lucide-react";
 import { Dachshund } from "@/components/Dachshund";
+import { ProgressBar } from "@/components/goals/ProgressBar";
 import type { FeedGoal } from "@/hooks/useGoals";
 import { dateOnly, ddayLabel, isOverdue } from "@/lib/goals";
 
@@ -65,6 +66,12 @@ export function FeedCard({
         <p className="mt-2 text-xs font-bold text-muted-foreground">
           {"⭐".repeat(goal.importance)} · 기한 {dateOnly(goal.deadline)}
         </p>
+
+        <ProgressBar
+          value={goal.is_done ? 100 : goal.progress}
+          done={goal.is_done}
+          className="mt-2.5"
+        />
 
         <div className="mt-4 flex gap-2">
           <button
