@@ -147,7 +147,7 @@ export function GoalFormModal({
                 n <= importance ? "bg-accent/15" : "bg-muted"
               }`}
             >
-              <span className={n <= importance ? "" : "opacity-25 grayscale"}>⭐</span>
+              <StarIcon size={22} filled={n <= importance} />
             </button>
           ))}
         </div>
