@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Lock, Users, X } from "lucide-react";
+import { StarIcon } from "@/components/goals/StarIcon";
 import { db } from "@/lib/db";
 import { dateOnly, todayISO, type Goal } from "@/lib/goals";
 
@@ -147,7 +148,7 @@ export function GoalFormModal({
                 n <= importance ? "bg-accent/15" : "bg-muted"
               }`}
             >
-              <span className={n <= importance ? "" : "opacity-25 grayscale"}>⭐</span>
+              <StarIcon size={22} filled={n <= importance} />
             </button>
           ))}
         </div>

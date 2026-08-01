@@ -1,4 +1,5 @@
 import { ProgressBar } from "@/components/goals/ProgressBar";
+import { StarRating } from "@/components/goals/StarIcon";
 import { ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
 
 export function GoalListCard({ goal, onSelect }: { goal: Goal; onSelect: (g: Goal) => void }) {
@@ -37,8 +38,8 @@ export function GoalListCard({ goal, onSelect }: { goal: Goal; onSelect: (g: Goa
           />
 
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-bold text-muted-foreground">
-              {"⭐".repeat(goal.importance)}
+            <span className="flex items-center rounded-full bg-muted px-2 py-1 text-[11px] font-bold text-muted-foreground">
+              <StarRating value={goal.importance} />
             </span>
             <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-bold text-muted-foreground">
               {quadrant.label}

@@ -1,6 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { Dachshund } from "@/components/Dachshund";
 import { ProgressBar } from "@/components/goals/ProgressBar";
+import { StarRating } from "@/components/goals/StarIcon";
 import type { FeedGoal } from "@/hooks/useGoals";
 import { dateOnly, ddayLabel, isOverdue } from "@/lib/goals";
 
@@ -63,8 +64,9 @@ export function FeedCard({
           <p className="mt-1 text-sm font-medium text-muted-foreground">{goal.description}</p>
         )}
 
-        <p className="mt-2 text-xs font-bold text-muted-foreground">
-          {"⭐".repeat(goal.importance)} · 기한 {dateOnly(goal.deadline)}
+        <p className="mt-2 flex items-center gap-1 text-xs font-bold text-muted-foreground">
+          <StarRating value={goal.importance} size={13} />
+          <span>· 기한 {dateOnly(goal.deadline)}</span>
         </p>
 
         <ProgressBar
