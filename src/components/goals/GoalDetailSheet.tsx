@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
+import { ProgressBar } from "@/components/goals/ProgressBar";
 import { db } from "@/lib/db";
 import { dateOnly, ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
 
@@ -13,9 +14,15 @@ export function GoalDetailSheet({
   goal: Goal | null;
   onClose: () => void;
   onEdit: (goal: Goal) => void;
-  onChanged: (event: "done" | "undone" | "deleted" | "visibility") => void;
+  onChanged: (event: "done" | "undone" | "deleted" | "visibility" | "progress") => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [savingProgress, setSavingProgress] = useState(false);
+
+  useEffect(() => {
+    if (goal) setProgress(goal.is_done ? 100 : goal.progress);
+  }, [goal]);
 
   useEffect(() => {
     if (!goal) return;
@@ -28,6 +35,22 @@ export function GoalDetailSheet({
 
   const overdue = isOverdue(goal);
   const quadrant = quadrantOf(goal);
+  const progressDirty = progress !== (goal.is_done ? 100 : goal.progress);
+
+  async function saveProgress() {
+    if (!goal) return;
+    setSavingProgress(true);
+    const { error } = await db.from("goals").update({ progress }).eq("id", goal.id);
+    setSavingProgress(false);
+
+    if (error) {
+      console.error(error);
+      toast.error("진행률을 저장하지 못했어.");
+      return;
+    }
+    toast.success(progress === 100 ? "거의 다 왔어! 🎉" : `진행률 ${progress}% 저장했어요`);
+    onChanged("progress");
+  }
 
   async function toggleDone() {
     if (!goal) return;
@@ -143,6 +166,58 @@ export function GoalDetailSheet({
             <dd className="mt-0.5 text-sm font-black">{dateOnly(goal.deadline)}</dd>
           </div>
         </dl>
+
+        {/* 진행률 */}
+        <div className="mt-4 rounded-[18px] bg-muted/70 px-4 py-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-muted-foreground">진행률</p>
+            <span className="text-lg font-black text-primary">{progress}%</span>
+          </div>
+
+          <ProgressBar value={progress} done={goal.is_done} className="mt-2.5" />
+
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={progress}
+            disabled={goal.is_done || busy}
+            onChange={(e) => setProgress(Number(e.target.value))}
+            aria-label="진행률 조절"
+            className="mt-3 h-2 w-full cursor-pointer accent-accent disabled:opacity-50"
+          />
+
+          <div className="mt-3 flex gap-1.5">
+            {[0, 25, 50, 75, 100].map((n) => (
+              <button
+                key={n}
+                type="button"
+                disabled={goal.is_done || busy}
+                onClick={() => setProgress(n)}
+                className={`flex-1 rounded-[14px] py-2 text-[11px] font-bold transition-transform active:scale-95 disabled:opacity-50 ${
+                  progress === n ? "bg-accent text-accent-foreground" : "bg-background text-foreground"
+                }`}
+              >
+                {n}%
+              </button>
+            ))}
+          </div>
+
+          {goal.is_done ? (
+            <p className="mt-2.5 text-[11px] font-semibold text-muted-foreground">
+              완료한 목표는 100%로 고정돼요.
+            </p>
+          ) : (
+            <button
+              onClick={saveProgress}
+              disabled={!progressDirty || savingProgress}
+              className="mt-3 w-full rounded-[16px] bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition-transform active:scale-95 disabled:opacity-40"
+            >
+              {savingProgress ? "저장 중..." : progressDirty ? "진행률 저장" : "저장됨"}
+            </button>
+          )}
+        </div>
 
         <div className="mt-5 space-y-2">
           <button
