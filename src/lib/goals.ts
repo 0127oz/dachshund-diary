@@ -10,6 +10,7 @@ export type Goal = {
   description: string | null;
   importance: number; // 1~5
   deadline: string; // "YYYY-MM-DD"
+  progress: number; // 0~100 (%)
   is_done: boolean;
   is_public: boolean; // 응지의 목표 피드 공개 여부
   created_at: string;
