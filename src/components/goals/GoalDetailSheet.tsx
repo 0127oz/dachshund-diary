@@ -18,10 +18,14 @@ export function GoalDetailSheet({
 }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [savedProgress, setSavedProgress] = useState(0);
   const [savingProgress, setSavingProgress] = useState(false);
 
   useEffect(() => {
-    if (goal) setProgress(goal.is_done ? 100 : goal.progress);
+    if (!goal) return;
+    const value = goal.is_done ? 100 : goal.progress;
+    setProgress(value);
+    setSavedProgress(value);
   }, [goal]);
 
   useEffect(() => {
@@ -35,7 +39,7 @@ export function GoalDetailSheet({
 
   const overdue = isOverdue(goal);
   const quadrant = quadrantOf(goal);
-  const progressDirty = progress !== (goal.is_done ? 100 : goal.progress);
+  const progressDirty = progress !== savedProgress;
 
   async function saveProgress() {
     if (!goal) return;
@@ -49,6 +53,7 @@ export function GoalDetailSheet({
       return;
     }
     toast.success(progress === 100 ? "거의 다 왔어! 🎉" : `진행률 ${progress}% 저장했어요`);
+    setSavedProgress(progress);
     onChanged("progress");
   }
 
