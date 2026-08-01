@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
 import { ProgressBar } from "@/components/goals/ProgressBar";
+import { StarRating } from "@/components/goals/StarIcon";
 import { db } from "@/lib/db";
 import { dateOnly, ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
 
@@ -44,7 +45,11 @@ export function GoalDetailSheet({
   async function saveProgress() {
     if (!goal) return;
     setSavingProgress(true);
-    const { error } = await db.from("goals").update({ progress }).eq("id", goal.id);
+    const complete = progress === 100;
+    const { error } = await db
+      .from("goals")
+      .update(complete ? { progress, is_done: true } : { progress })
+      .eq("id", goal.id);
     setSavingProgress(false);
 
     if (error) {
@@ -52,8 +57,16 @@ export function GoalDetailSheet({
       toast.error("진행률을 저장하지 못했어.");
       return;
     }
-    toast.success(progress === 100 ? "거의 다 왔어! 🎉" : `진행률 ${progress}% 저장했어요`);
     setSavedProgress(progress);
+
+    if (complete) {
+      toast.success("100% 달성! 목표 완료로 바꿨어요 🎉");
+      onChanged("done");
+      onClose();
+      return;
+    }
+
+    toast.success(`진행률 ${progress}% 저장했어요`);
     onChanged("progress");
   }
 
@@ -164,7 +177,9 @@ export function GoalDetailSheet({
         <dl className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-[16px] bg-muted/70 px-4 py-3">
             <dt className="text-[11px] font-bold text-muted-foreground">중요도</dt>
-            <dd className="mt-0.5 text-sm font-black">{"⭐".repeat(goal.importance)}</dd>
+            <dd className="mt-0.5 flex items-center text-sm font-black">
+              <StarRating value={goal.importance} size={16} />
+            </dd>
           </div>
           <div className="rounded-[16px] bg-muted/70 px-4 py-3">
             <dt className="text-[11px] font-bold text-muted-foreground">기한</dt>
