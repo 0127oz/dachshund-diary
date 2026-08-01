@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Lock, Users, X } from "lucide-react";
+import { StarIcon } from "@/components/goals/StarIcon";
 import { db } from "@/lib/db";
 import { dateOnly, todayISO, type Goal } from "@/lib/goals";
 

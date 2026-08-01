@@ -1,6 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { Dachshund } from "@/components/Dachshund";
 import { ProgressBar } from "@/components/goals/ProgressBar";
+import { StarRating } from "@/components/goals/StarIcon";
 import type { FeedGoal } from "@/hooks/useGoals";
 import { dateOnly, ddayLabel, isOverdue } from "@/lib/goals";
 
