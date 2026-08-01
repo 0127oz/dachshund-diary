@@ -1,3 +1,4 @@
+import { ProgressBar } from "@/components/goals/ProgressBar";
 import { ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
 
 export function GoalListCard({ goal, onSelect }: { goal: Goal; onSelect: (g: Goal) => void }) {
@@ -29,7 +30,13 @@ export function GoalListCard({ goal, onSelect }: { goal: Goal; onSelect: (g: Goa
             </p>
           )}
 
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <ProgressBar
+            value={goal.is_done ? 100 : goal.progress}
+            done={goal.is_done}
+            className="mt-2.5"
+          />
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-bold text-muted-foreground">
               {"⭐".repeat(goal.importance)}
             </span>
