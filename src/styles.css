@@ -59,6 +59,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-star: var(--star);
+  --color-star-edge: var(--star-edge);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -109,6 +111,9 @@
   /* 포인트 코랄 #FF8A65 */
   --accent: oklch(0.742 0.148 41.5);
   --accent-foreground: oklch(0.99 0.01 80);
+  /* 중요도 별 — 말랑한 노란색 */
+  --star: oklch(0.855 0.165 88);
+  --star-edge: oklch(0.72 0.145 72);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(0.918 0.024 74);
@@ -162,6 +167,8 @@
   --muted-foreground: oklch(0.704 0.04 256.788);
   --accent: oklch(0.279 0.041 260.031);
   --accent-foreground: oklch(0.984 0.003 247.858);
+  --star: oklch(0.855 0.165 88);
+  --star-edge: oklch(0.72 0.145 72);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(1 0 0 / 10%);
