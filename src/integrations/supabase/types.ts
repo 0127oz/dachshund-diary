@@ -88,6 +88,7 @@ export type Database = {
           importance: number
           is_done: boolean
           is_public: boolean
+          progress: number
           title: string
           user_id: string
         }
@@ -100,6 +101,7 @@ export type Database = {
           importance?: number
           is_done?: boolean
           is_public?: boolean
+          progress?: number
           title: string
           user_id: string
         }
@@ -112,6 +114,7 @@ export type Database = {
           importance?: number
           is_done?: boolean
           is_public?: boolean
+          progress?: number
           title?: string
           user_id?: string
         }
