@@ -3,10 +3,18 @@ import { toast } from "sonner";
 import { Camera, Check, ImagePlus, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
 import { ProgressBar } from "@/components/goals/ProgressBar";
 import { StarRating } from "@/components/goals/StarIcon";
-import { useProofPhoto } from "@/hooks/useProofPhoto";
+import { useProofPhotos } from "@/hooks/useProofPhotos";
 import { db } from "@/lib/db";
-import { removeProofPhoto, uploadProofPhoto } from "@/lib/photo";
-import { dateOnly, ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
+import { removeProofPhotos, uploadProofPhoto } from "@/lib/photo";
+import {
+  dateOnly,
+  ddayLabel,
+  isOverdue,
+  photoPathsOf,
+  quadrantOf,
+  MAX_PHOTOS,
+  type Goal,
+} from "@/lib/goals";
 
 export function GoalDetailSheet({
   goal,
@@ -23,17 +31,17 @@ export function GoalDetailSheet({
   const [progress, setProgress] = useState(0);
   const [savedProgress, setSavedProgress] = useState(0);
   const [savingProgress, setSavingProgress] = useState(false);
-  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [photoPaths, setPhotoPaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const photoUrl = useProofPhoto(photoPath);
+  const photoUrls = useProofPhotos(photoPaths);
 
   useEffect(() => {
     if (!goal) return;
     const value = goal.is_done ? 100 : goal.progress;
     setProgress(value);
     setSavedProgress(value);
-    setPhotoPath(goal.proof_photo_path ?? null);
+    setPhotoPaths(photoPathsOf(goal));
   }, [goal]);
 
   useEffect(() => {
@@ -49,23 +57,43 @@ export function GoalDetailSheet({
   const quadrant = quadrantOf(goal);
   const progressDirty = progress !== savedProgress;
 
-  async function pickPhoto(file: File | undefined) {
-    if (!goal || !file) return;
-    if (!file.type.startsWith("image/")) {
+  async function pickPhotos(fileList: FileList | null) {
+    if (!goal || !fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+
+    if (files.some((f) => !f.type.startsWith("image/"))) {
       toast.error("이미지 파일만 올릴 수 있어요.");
+      if (fileRef.current) fileRef.current.value = "";
       return;
     }
 
+    const room = MAX_PHOTOS - photoPaths.length;
+    if (room <= 0) {
+      toast.error(`사진은 최대 ${MAX_PHOTOS}장까지 올릴 수 있어요.`);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    const picked = files.slice(0, room);
+
     setUploading(true);
     try {
-      const path = await uploadProofPhoto(goal.user_id, goal.id, file);
-      const { error } = await db.from("goals").update({ proof_photo_path: path }).eq("id", goal.id);
+      const uploaded: string[] = [];
+      for (const file of picked) {
+        uploaded.push(await uploadProofPhoto(goal.user_id, goal.id, file));
+      }
+      const next = [...photoPaths, ...uploaded];
+      const { error } = await db
+        .from("goals")
+        .update({ proof_photo_paths: next })
+        .eq("id", goal.id);
       if (error) throw error;
 
-      const old = photoPath;
-      setPhotoPath(path);
-      if (old && old !== path) void removeProofPhoto(old);
-      toast.success("달성 사진을 올렸어요 📸 (webp로 저장)");
+      setPhotoPaths(next);
+      toast.success(
+        files.length > picked.length
+          ? `${picked.length}장만 올렸어요 (최대 ${MAX_PHOTOS}장)`
+          : "달성 사진을 올렸어요 📸 (webp로 저장)",
+      );
       onChanged("progress");
     } catch (e) {
       console.error(e);
@@ -76,20 +104,24 @@ export function GoalDetailSheet({
     }
   }
 
-  async function deletePhoto() {
-    if (!goal || !photoPath) return;
+  async function deletePhoto(path: string) {
+    if (!goal) return;
+    const next = photoPaths.filter((p) => p !== path);
     setUploading(true);
-    const { error } = await db.from("goals").update({ proof_photo_path: null }).eq("id", goal.id);
+    const { error } = await db
+      .from("goals")
+      .update({ proof_photo_paths: next })
+      .eq("id", goal.id);
     if (error) {
       console.error(error);
       toast.error("사진을 지우지 못했어.");
       setUploading(false);
       return;
     }
-    void removeProofPhoto(photoPath);
-    setPhotoPath(null);
+    void removeProofPhotos([path]);
+    setPhotoPaths(next);
     setUploading(false);
-    toast.success("달성 사진을 지웠어요");
+    toast.success("사진을 지웠어요");
     onChanged("progress");
   }
 
@@ -297,22 +329,37 @@ export function GoalDetailSheet({
             <p className="text-sm font-bold text-muted-foreground">달성 사진</p>
           </div>
           <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
-            사진을 올리면 webp로 작게 변환돼서 저장되고, 공개 목표라면 응지의 목표에서도 보여요.
+            사진은 최대 {MAX_PHOTOS}장까지 올릴 수 있어요. webp로 작게 변환돼서 저장되고, 공개
+            목표라면 응지의 목표에서도 보여요.
           </p>
 
-          {photoPath && (
-            <div className="mt-3 overflow-hidden rounded-[16px] bg-background">
-              {photoUrl ? (
-                <img
-                  src={photoUrl}
-                  alt="목표 달성 사진"
-                  className="block max-h-72 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-40 items-center justify-center text-xs font-bold text-muted-foreground">
-                  사진 불러오는 중...
+          {photoPaths.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {photoPaths.map((path, i) => (
+                <div
+                  key={path}
+                  className="relative aspect-square overflow-hidden rounded-[14px] bg-background"
+                >
+                  {photoUrls[i] ? (
+                    <img
+                      src={photoUrls[i] as string}
+                      alt={`목표 달성 사진 ${i + 1}`}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="absolute inset-0 motion-safe:animate-pulse" />
+                  )}
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => void deletePhoto(path)}
+                    aria-label={`${i + 1}번째 사진 지우기`}
+                    className="absolute right-1 top-1 rounded-full bg-foreground/60 p-1 text-background disabled:opacity-50"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
-              )}
+              ))}
             </div>
           )}
 
@@ -320,30 +367,27 @@ export function GoalDetailSheet({
             ref={fileRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
-            onChange={(e) => void pickPhoto(e.target.files?.[0])}
+            onChange={(e) => void pickPhotos(e.target.files)}
           />
 
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              disabled={uploading}
+              disabled={uploading || photoPaths.length >= MAX_PHOTOS}
               onClick={() => fileRef.current?.click()}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-[16px] bg-background px-4 py-2.5 text-sm font-bold text-foreground transition-transform active:scale-95 disabled:opacity-50"
             >
               <ImagePlus size={16} />
-              {uploading ? "올리는 중..." : photoPath ? "사진 바꾸기" : "사진 올리기"}
+              {uploading
+                ? "올리는 중..."
+                : photoPaths.length >= MAX_PHOTOS
+                  ? `최대 ${MAX_PHOTOS}장까지`
+                  : photoPaths.length > 0
+                    ? `사진 더 올리기 (${photoPaths.length}/${MAX_PHOTOS})`
+                    : "사진 올리기"}
             </button>
-            {photoPath && (
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={() => void deletePhoto()}
-                className="rounded-[16px] bg-destructive/10 px-4 py-2.5 text-sm font-bold text-destructive transition-transform active:scale-95 disabled:opacity-50"
-              >
-                <Trash2 size={16} />
-              </button>
-            )}
           </div>
         </div>
 

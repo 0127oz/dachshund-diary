@@ -2,9 +2,9 @@ import { MessageCircle } from "lucide-react";
 import { Dachshund } from "@/components/Dachshund";
 import { ProgressBar } from "@/components/goals/ProgressBar";
 import { StarRating } from "@/components/goals/StarIcon";
-import { useProofPhoto } from "@/hooks/useProofPhoto";
+import { PhotoGrid } from "@/components/social/PhotoGrid";
 import type { FeedGoal } from "@/hooks/useGoals";
-import { dateOnly, ddayLabel, isOverdue } from "@/lib/goals";
+import { dateOnly, ddayLabel, isOverdue, photoPathsOf } from "@/lib/goals";
 
 export function FeedCard({
   goal,
@@ -20,7 +20,7 @@ export function FeedCard({
   onOpenComments: () => void;
 }) {
   const overdue = isOverdue(goal);
-  const photoUrl = useProofPhoto(goal.proof_photo_path);
+  const photos = photoPathsOf(goal);
 
   return (
     <article className="card-soft overflow-hidden">
@@ -77,20 +77,7 @@ export function FeedCard({
           className="mt-2.5"
         />
 
-        {goal.proof_photo_path && (
-          <div className="mt-3 overflow-hidden rounded-[16px] bg-muted">
-            {photoUrl ? (
-              <img
-                src={photoUrl}
-                alt={`${goal.nickname} 님의 달성 사진`}
-                loading="lazy"
-                className="block max-h-80 w-full object-cover"
-              />
-            ) : (
-              <div className="h-40 w-full motion-safe:animate-pulse" />
-            )}
-          </div>
-        )}
+        <PhotoGrid paths={photos} alt={`${goal.nickname} 님의 달성 사진`} />
 
         <div className="mt-4 flex gap-2">
           <button
