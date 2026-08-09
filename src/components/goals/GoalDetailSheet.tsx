@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
+import { Camera, Check, ImagePlus, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
 import { ProgressBar } from "@/components/goals/ProgressBar";
 import { StarRating } from "@/components/goals/StarIcon";
+import { useProofPhoto } from "@/hooks/useProofPhoto";
 import { db } from "@/lib/db";
+import { removeProofPhoto, uploadProofPhoto } from "@/lib/photo";
 import { dateOnly, ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
 
 export function GoalDetailSheet({
@@ -21,12 +23,17 @@ export function GoalDetailSheet({
   const [progress, setProgress] = useState(0);
   const [savedProgress, setSavedProgress] = useState(0);
   const [savingProgress, setSavingProgress] = useState(false);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const photoUrl = useProofPhoto(photoPath);
 
   useEffect(() => {
     if (!goal) return;
     const value = goal.is_done ? 100 : goal.progress;
     setProgress(value);
     setSavedProgress(value);
+    setPhotoPath(goal.proof_photo_path ?? null);
   }, [goal]);
 
   useEffect(() => {
@@ -41,6 +48,50 @@ export function GoalDetailSheet({
   const overdue = isOverdue(goal);
   const quadrant = quadrantOf(goal);
   const progressDirty = progress !== savedProgress;
+
+  async function pickPhoto(file: File | undefined) {
+    if (!goal || !file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("이미지 파일만 올릴 수 있어요.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const path = await uploadProofPhoto(goal.user_id, goal.id, file);
+      const { error } = await db.from("goals").update({ proof_photo_path: path }).eq("id", goal.id);
+      if (error) throw error;
+
+      const old = photoPath;
+      setPhotoPath(path);
+      if (old && old !== path) void removeProofPhoto(old);
+      toast.success("달성 사진을 올렸어요 📸 (webp로 저장)");
+      onChanged("progress");
+    } catch (e) {
+      console.error(e);
+      toast.error("사진을 올리지 못했어. 다시 해볼래?");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function deletePhoto() {
+    if (!goal || !photoPath) return;
+    setUploading(true);
+    const { error } = await db.from("goals").update({ proof_photo_path: null }).eq("id", goal.id);
+    if (error) {
+      console.error(error);
+      toast.error("사진을 지우지 못했어.");
+      setUploading(false);
+      return;
+    }
+    void removeProofPhoto(photoPath);
+    setPhotoPath(null);
+    setUploading(false);
+    toast.success("달성 사진을 지웠어요");
+    onChanged("progress");
+  }
 
   async function saveProgress() {
     if (!goal) return;
@@ -237,6 +288,63 @@ export function GoalDetailSheet({
               {savingProgress ? "저장 중..." : progressDirty ? "진행률 저장" : "저장됨"}
             </button>
           )}
+        </div>
+
+        {/* 달성 사진 */}
+        <div className="mt-3 rounded-[18px] bg-muted/70 px-4 py-4">
+          <div className="flex items-center gap-1.5">
+            <Camera size={15} className="text-primary" />
+            <p className="text-sm font-bold text-muted-foreground">달성 사진</p>
+          </div>
+          <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+            사진을 올리면 webp로 작게 변환돼서 저장되고, 공개 목표라면 응지의 목표에서도 보여요.
+          </p>
+
+          {photoPath && (
+            <div className="mt-3 overflow-hidden rounded-[16px] bg-background">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="목표 달성 사진"
+                  className="block max-h-72 w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-40 items-center justify-center text-xs font-bold text-muted-foreground">
+                  사진 불러오는 중...
+                </div>
+              )}
+            </div>
+          )}
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void pickPhoto(e.target.files?.[0])}
+          />
+
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-[16px] bg-background px-4 py-2.5 text-sm font-bold text-foreground transition-transform active:scale-95 disabled:opacity-50"
+            >
+              <ImagePlus size={16} />
+              {uploading ? "올리는 중..." : photoPath ? "사진 바꾸기" : "사진 올리기"}
+            </button>
+            {photoPath && (
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => void deletePhoto()}
+                className="rounded-[16px] bg-destructive/10 px-4 py-2.5 text-sm font-bold text-destructive transition-transform active:scale-95 disabled:opacity-50"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mt-5 space-y-2">

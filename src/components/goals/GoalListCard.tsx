@@ -23,6 +23,7 @@ export function GoalListCard({ goal, onSelect }: { goal: Goal; onSelect: (g: Goa
               {goal.title}
             </p>
             {goal.is_done && <span className="shrink-0 text-sm">🎀</span>}
+            {goal.proof_photo_path && <span className="shrink-0 text-sm">📸</span>}
           </div>
 
           {goal.description && (
