@@ -329,22 +329,37 @@ export function GoalDetailSheet({
             <p className="text-sm font-bold text-muted-foreground">달성 사진</p>
           </div>
           <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
-            사진을 올리면 webp로 작게 변환돼서 저장되고, 공개 목표라면 응지의 목표에서도 보여요.
+            사진은 최대 {MAX_PHOTOS}장까지 올릴 수 있어요. webp로 작게 변환돼서 저장되고, 공개
+            목표라면 응지의 목표에서도 보여요.
           </p>
 
-          {photoPath && (
-            <div className="mt-3 overflow-hidden rounded-[16px] bg-background">
-              {photoUrl ? (
-                <img
-                  src={photoUrl}
-                  alt="목표 달성 사진"
-                  className="block max-h-72 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-40 items-center justify-center text-xs font-bold text-muted-foreground">
-                  사진 불러오는 중...
+          {photoPaths.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {photoPaths.map((path, i) => (
+                <div
+                  key={path}
+                  className="relative aspect-square overflow-hidden rounded-[14px] bg-background"
+                >
+                  {photoUrls[i] ? (
+                    <img
+                      src={photoUrls[i] as string}
+                      alt={`목표 달성 사진 ${i + 1}`}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="absolute inset-0 motion-safe:animate-pulse" />
+                  )}
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => void deletePhoto(path)}
+                    aria-label={`${i + 1}번째 사진 지우기`}
+                    className="absolute right-1 top-1 rounded-full bg-foreground/60 p-1 text-background disabled:opacity-50"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
-              )}
+              ))}
             </div>
           )}
 
@@ -352,30 +367,27 @@ export function GoalDetailSheet({
             ref={fileRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
-            onChange={(e) => void pickPhoto(e.target.files?.[0])}
+            onChange={(e) => void pickPhotos(e.target.files)}
           />
 
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              disabled={uploading}
+              disabled={uploading || photoPaths.length >= MAX_PHOTOS}
               onClick={() => fileRef.current?.click()}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-[16px] bg-background px-4 py-2.5 text-sm font-bold text-foreground transition-transform active:scale-95 disabled:opacity-50"
             >
               <ImagePlus size={16} />
-              {uploading ? "올리는 중..." : photoPath ? "사진 바꾸기" : "사진 올리기"}
+              {uploading
+                ? "올리는 중..."
+                : photoPaths.length >= MAX_PHOTOS
+                  ? `최대 ${MAX_PHOTOS}장까지`
+                  : photoPaths.length > 0
+                    ? `사진 더 올리기 (${photoPaths.length}/${MAX_PHOTOS})`
+                    : "사진 올리기"}
             </button>
-            {photoPath && (
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={() => void deletePhoto()}
-                className="rounded-[16px] bg-destructive/10 px-4 py-2.5 text-sm font-bold text-destructive transition-transform active:scale-95 disabled:opacity-50"
-              >
-                <Trash2 size={16} />
-              </button>
-            )}
           </div>
         </div>
 
