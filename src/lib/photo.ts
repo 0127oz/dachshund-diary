@@ -75,3 +75,23 @@ export async function signedPhotoUrl(path: string): Promise<string | null> {
   }
   return data?.signedUrl ?? null;
 }
+
+/** 여러 경로의 서명 URL 을 한 번에 발급 (실패한 건 null) */
+export async function signedPhotoUrls(paths: string[]): Promise<(string | null)[]> {
+  if (paths.length === 0) return [];
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrls(paths, 3600);
+  if (error) {
+    console.error(error);
+    return paths.map(() => null);
+  }
+  const map = new Map<string, string>();
+  for (const row of data ?? []) {
+    if (row.path && row.signedUrl) map.set(row.path, row.signedUrl);
+  }
+  return paths.map((p) => map.get(p) ?? null);
+}
+
+export async function removeProofPhotos(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  await supabase.storage.from(BUCKET).remove(paths);
+}
