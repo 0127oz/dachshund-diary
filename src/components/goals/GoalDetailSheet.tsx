@@ -3,10 +3,18 @@ import { toast } from "sonner";
 import { Camera, Check, ImagePlus, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
 import { ProgressBar } from "@/components/goals/ProgressBar";
 import { StarRating } from "@/components/goals/StarIcon";
-import { useProofPhoto } from "@/hooks/useProofPhoto";
+import { useProofPhotos } from "@/hooks/useProofPhotos";
 import { db } from "@/lib/db";
-import { removeProofPhoto, uploadProofPhoto } from "@/lib/photo";
-import { dateOnly, ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
+import { removeProofPhotos, uploadProofPhoto } from "@/lib/photo";
+import {
+  dateOnly,
+  ddayLabel,
+  isOverdue,
+  photoPathsOf,
+  quadrantOf,
+  MAX_PHOTOS,
+  type Goal,
+} from "@/lib/goals";
 
 export function GoalDetailSheet({
   goal,
@@ -23,17 +31,17 @@ export function GoalDetailSheet({
   const [progress, setProgress] = useState(0);
   const [savedProgress, setSavedProgress] = useState(0);
   const [savingProgress, setSavingProgress] = useState(false);
-  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [photoPaths, setPhotoPaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const photoUrl = useProofPhoto(photoPath);
+  const photoUrls = useProofPhotos(photoPaths);
 
   useEffect(() => {
     if (!goal) return;
     const value = goal.is_done ? 100 : goal.progress;
     setProgress(value);
     setSavedProgress(value);
-    setPhotoPath(goal.proof_photo_path ?? null);
+    setPhotoPaths(photoPathsOf(goal));
   }, [goal]);
 
   useEffect(() => {
@@ -49,23 +57,43 @@ export function GoalDetailSheet({
   const quadrant = quadrantOf(goal);
   const progressDirty = progress !== savedProgress;
 
-  async function pickPhoto(file: File | undefined) {
-    if (!goal || !file) return;
-    if (!file.type.startsWith("image/")) {
+  async function pickPhotos(fileList: FileList | null) {
+    if (!goal || !fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+
+    if (files.some((f) => !f.type.startsWith("image/"))) {
       toast.error("이미지 파일만 올릴 수 있어요.");
+      if (fileRef.current) fileRef.current.value = "";
       return;
     }
 
+    const room = MAX_PHOTOS - photoPaths.length;
+    if (room <= 0) {
+      toast.error(`사진은 최대 ${MAX_PHOTOS}장까지 올릴 수 있어요.`);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    const picked = files.slice(0, room);
+
     setUploading(true);
     try {
-      const path = await uploadProofPhoto(goal.user_id, goal.id, file);
-      const { error } = await db.from("goals").update({ proof_photo_path: path }).eq("id", goal.id);
+      const uploaded: string[] = [];
+      for (const file of picked) {
+        uploaded.push(await uploadProofPhoto(goal.user_id, goal.id, file));
+      }
+      const next = [...photoPaths, ...uploaded];
+      const { error } = await db
+        .from("goals")
+        .update({ proof_photo_paths: next })
+        .eq("id", goal.id);
       if (error) throw error;
 
-      const old = photoPath;
-      setPhotoPath(path);
-      if (old && old !== path) void removeProofPhoto(old);
-      toast.success("달성 사진을 올렸어요 📸 (webp로 저장)");
+      setPhotoPaths(next);
+      toast.success(
+        files.length > picked.length
+          ? `${picked.length}장만 올렸어요 (최대 ${MAX_PHOTOS}장)`
+          : "달성 사진을 올렸어요 📸 (webp로 저장)",
+      );
       onChanged("progress");
     } catch (e) {
       console.error(e);
@@ -76,20 +104,24 @@ export function GoalDetailSheet({
     }
   }
 
-  async function deletePhoto() {
-    if (!goal || !photoPath) return;
+  async function deletePhoto(path: string) {
+    if (!goal) return;
+    const next = photoPaths.filter((p) => p !== path);
     setUploading(true);
-    const { error } = await db.from("goals").update({ proof_photo_path: null }).eq("id", goal.id);
+    const { error } = await db
+      .from("goals")
+      .update({ proof_photo_paths: next })
+      .eq("id", goal.id);
     if (error) {
       console.error(error);
       toast.error("사진을 지우지 못했어.");
       setUploading(false);
       return;
     }
-    void removeProofPhoto(photoPath);
-    setPhotoPath(null);
+    void removeProofPhotos([path]);
+    setPhotoPaths(next);
     setUploading(false);
-    toast.success("달성 사진을 지웠어요");
+    toast.success("사진을 지웠어요");
     onChanged("progress");
   }
 
