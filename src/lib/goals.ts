@@ -14,8 +14,22 @@ export type Goal = {
   is_done: boolean;
   is_public: boolean; // 응지의 목표 피드 공개 여부
   proof_photo_path: string | null; // 달성 인증 사진 (goal-photos 버킷 경로)
+  proof_photo_paths?: string[] | null; // 달성 인증 사진 여러 장 (최대 5)
   created_at: string;
 };
+
+/** 최대 업로드 가능한 달성 사진 수 */
+export const MAX_PHOTOS = 5;
+
+/** 구버전(단일 사진)과 신버전(배열) 데이터를 한 배열로 정리 */
+export function photoPathsOf(goal: {
+  proof_photo_path?: string | null;
+  proof_photo_paths?: string[] | null;
+}): string[] {
+  const list = goal.proof_photo_paths ?? [];
+  if (list.length > 0) return list.slice(0, MAX_PHOTOS);
+  return goal.proof_photo_path ? [goal.proof_photo_path] : [];
+}
 
 /** 그리드 가로축이 담는 최대 기간(일). 이 값을 넘으면 맨 오른쪽에 고정됩니다. */
 export const HORIZON_DAYS = 60;
