@@ -13,6 +13,7 @@ export type Goal = {
   progress: number; // 0~100 (%)
   is_done: boolean;
   is_public: boolean; // 응지의 목표 피드 공개 여부
+  proof_photo_path: string | null; // 달성 인증 사진 (goal-photos 버킷 경로)
   created_at: string;
 };
 
