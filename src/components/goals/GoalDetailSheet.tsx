@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
+import { Camera, Check, ImagePlus, Lock, Pencil, RotateCcw, Trash2, Users, X } from "lucide-react";
 import { ProgressBar } from "@/components/goals/ProgressBar";
 import { StarRating } from "@/components/goals/StarIcon";
+import { useProofPhoto } from "@/hooks/useProofPhoto";
 import { db } from "@/lib/db";
+import { removeProofPhoto, uploadProofPhoto } from "@/lib/photo";
 import { dateOnly, ddayLabel, isOverdue, quadrantOf, type Goal } from "@/lib/goals";
 
 export function GoalDetailSheet({
@@ -21,12 +23,17 @@ export function GoalDetailSheet({
   const [progress, setProgress] = useState(0);
   const [savedProgress, setSavedProgress] = useState(0);
   const [savingProgress, setSavingProgress] = useState(false);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const photoUrl = useProofPhoto(photoPath);
 
   useEffect(() => {
     if (!goal) return;
     const value = goal.is_done ? 100 : goal.progress;
     setProgress(value);
     setSavedProgress(value);
+    setPhotoPath(goal.proof_photo_path ?? null);
   }, [goal]);
 
   useEffect(() => {
@@ -41,6 +48,50 @@ export function GoalDetailSheet({
   const overdue = isOverdue(goal);
   const quadrant = quadrantOf(goal);
   const progressDirty = progress !== savedProgress;
+
+  async function pickPhoto(file: File | undefined) {
+    if (!goal || !file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("이미지 파일만 올릴 수 있어요.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const path = await uploadProofPhoto(goal.user_id, goal.id, file);
+      const { error } = await db.from("goals").update({ proof_photo_path: path }).eq("id", goal.id);
+      if (error) throw error;
+
+      const old = photoPath;
+      setPhotoPath(path);
+      if (old && old !== path) void removeProofPhoto(old);
+      toast.success("달성 사진을 올렸어요 📸 (webp로 저장)");
+      onChanged("progress");
+    } catch (e) {
+      console.error(e);
+      toast.error("사진을 올리지 못했어. 다시 해볼래?");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function deletePhoto() {
+    if (!goal || !photoPath) return;
+    setUploading(true);
+    const { error } = await db.from("goals").update({ proof_photo_path: null }).eq("id", goal.id);
+    if (error) {
+      console.error(error);
+      toast.error("사진을 지우지 못했어.");
+      setUploading(false);
+      return;
+    }
+    void removeProofPhoto(photoPath);
+    setPhotoPath(null);
+    setUploading(false);
+    toast.success("달성 사진을 지웠어요");
+    onChanged("progress");
+  }
 
   async function saveProgress() {
     if (!goal) return;
