@@ -290,6 +290,63 @@ export function GoalDetailSheet({
           )}
         </div>
 
+        {/* 달성 사진 */}
+        <div className="mt-3 rounded-[18px] bg-muted/70 px-4 py-4">
+          <div className="flex items-center gap-1.5">
+            <Camera size={15} className="text-primary" />
+            <p className="text-sm font-bold text-muted-foreground">달성 사진</p>
+          </div>
+          <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+            사진을 올리면 webp로 작게 변환돼서 저장되고, 공개 목표라면 응지의 목표에서도 보여요.
+          </p>
+
+          {photoPath && (
+            <div className="mt-3 overflow-hidden rounded-[16px] bg-background">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="목표 달성 사진"
+                  className="block max-h-72 w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-40 items-center justify-center text-xs font-bold text-muted-foreground">
+                  사진 불러오는 중...
+                </div>
+              )}
+            </div>
+          )}
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void pickPhoto(e.target.files?.[0])}
+          />
+
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-[16px] bg-background px-4 py-2.5 text-sm font-bold text-foreground transition-transform active:scale-95 disabled:opacity-50"
+            >
+              <ImagePlus size={16} />
+              {uploading ? "올리는 중..." : photoPath ? "사진 바꾸기" : "사진 올리기"}
+            </button>
+            {photoPath && (
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => void deletePhoto()}
+                className="rounded-[16px] bg-destructive/10 px-4 py-2.5 text-sm font-bold text-destructive transition-transform active:scale-95 disabled:opacity-50"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="mt-5 space-y-2">
           <button
             onClick={toggleDone}
