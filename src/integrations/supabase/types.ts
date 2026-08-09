@@ -89,6 +89,7 @@ export type Database = {
           is_done: boolean
           is_public: boolean
           progress: number
+          proof_photo_path: string | null
           title: string
           user_id: string
         }
@@ -102,6 +103,7 @@ export type Database = {
           is_done?: boolean
           is_public?: boolean
           progress?: number
+          proof_photo_path?: string | null
           title: string
           user_id: string
         }
@@ -115,6 +117,7 @@ export type Database = {
           is_done?: boolean
           is_public?: boolean
           progress?: number
+          proof_photo_path?: string | null
           title?: string
           user_id?: string
         }
